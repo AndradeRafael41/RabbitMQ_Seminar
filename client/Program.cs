@@ -13,10 +13,13 @@
                 Console.WriteLine("\n╔══════════════════════════════════════╗");
                 Console.WriteLine("║      CLIENTE RPC - RabbitMQ         ║");
                 Console.WriteLine("╚══════════════════════════════════════╝");
-                Console.WriteLine("\n[OPERAÇÕES DISPONÍVEIS]");
+                Console.WriteLine("\n[OPERAÇÕES RPC - Com Resposta]");
                 Console.WriteLine("  1 - Enviar mensagem de texto");
                 Console.WriteLine("  2 - Escrever em arquivo no servidor");
                 Console.WriteLine("  3 - Operações matemáticas");
+                Console.WriteLine("\n[OPERAÇÃO ASSÍNCRONA - Sem Resposta]");
+                Console.WriteLine("  4 - Enviar mensagem async (Fire-and-forget)");
+                Console.WriteLine("\n[SISTEMA]");
                 Console.WriteLine("  0 - Sair");
                 Console.WriteLine("─────────────────────────────────────");
 
@@ -57,6 +60,19 @@
 
                         case "3":
                             MostrarMenuCalculadora(rpc);
+                            break;
+
+                        case "4":
+                            Console.Write("\n→ Mensagem para envio assíncrono: ");
+                            var msgAsync = Console.ReadLine();
+                            if (!string.IsNullOrWhiteSpace(msgAsync))
+                            {
+                                rpc.SendAsync("msg", msgAsync);
+                            }
+                            else
+                            {
+                                Console.WriteLine("[ERRO] Mensagem não pode ser vazia");
+                            }
                             break;
 
                         case "0":

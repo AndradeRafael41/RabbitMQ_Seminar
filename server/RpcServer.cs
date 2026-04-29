@@ -64,6 +64,10 @@ public class RpcServer
             var queue = Environment.GetEnvironmentVariable("QUEUE_RPC") ?? "fila_rpc";
             channel.QueueDeclare(queue, false, false, false);
 
+            // Declarando fila para mensagens assíncronas
+            var asyncQueue = Environment.GetEnvironmentVariable("QUEUE_ASYNC") ?? "fila_async";
+            channel.QueueDeclare(asyncQueue, false, false, false);
+
             // Criando consumidor para processar mensagens da fila RPC
             var consumer = new EventingBasicConsumer(channel);
 
@@ -110,12 +114,41 @@ public class RpcServer
                 }
             };
 
+            // Criando consumidor para processar mensagens assíncronas (sem resposta)
+            var asyncConsumer = new EventingBasicConsumer(channel);
+
+            asyncConsumer.Received += async (model, ea) =>
+            {
+                try
+                {
+                    var messageJson = Encoding.UTF8.GetString(ea.Body.ToArray());
+                    var request = JsonSerializer.Deserialize<RequestMessage>(messageJson);
+
+                    Console.WriteLine($"\n[ASYNC] Processando mensagem assíncrona: {request?.Operation}");
+                    Console.WriteLine($"[ASYNC] Payload: {request?.Payload}");
+
+                    // Processa a mensagem mas não envia resposta
+                    var response = await ProcessAsync(request);
+
+                    Console.WriteLine($"[ASYNC] Resultado: {response}");
+
+                    channel.BasicAck(ea.DeliveryTag, false);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ASYNC] Erro ao processar mensagem: {ex.Message}");
+                    channel.BasicNack(ea.DeliveryTag, false, false);
+                }
+            };
+
             channel.BasicConsume(queue, false, consumer);
+            channel.BasicConsume(asyncQueue, false, asyncConsumer);
 
             Console.WriteLine("╔════════════════════════════════════════╗");
             Console.WriteLine("║   SERVIDOR RPC RABBITMQ INICIADO      ║");
             Console.WriteLine("╚════════════════════════════════════════╝");
             Console.WriteLine($"\n→ Fila RPC: {queue}");
+            Console.WriteLine($"→ Fila Async: {asyncQueue}");
             Console.WriteLine("\n[INFO] Aguardando mensagens...\n");
 
             Console.ReadLine();

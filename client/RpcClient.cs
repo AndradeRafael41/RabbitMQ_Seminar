@@ -106,6 +106,38 @@ public class RpcClient : IDisposable
         }
     }
 
+    // Método assíncrono (Fire-and-forget) - Envia mensagem sem esperar resposta
+    public void SendAsync(string operation, string payload)
+    {
+        try
+        {
+            var request = new RequestMessage
+            {
+                Operation = operation,
+                Payload = payload
+            };
+
+            // serializando a requisição
+            var json = JsonSerializer.Serialize(request);
+            var body = Encoding.UTF8.GetBytes(json);
+
+            // Envia para uma fila dedicada de processamento assíncrono
+            var asyncQueue = Environment.GetEnvironmentVariable("QUEUE_ASYNC") ?? "fila_async";
+
+            // Declara a fila se não existir
+            _channel.QueueDeclare(asyncQueue, false, false, false);
+
+            // Envia mensagem sem aguardar resposta
+            _channel.BasicPublish("", asyncQueue, null, body);
+
+            Console.WriteLine($"\n[OK] Mensagem enviada para processamento assíncrono");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"\n[ERRO] Falha ao enviar mensagem assíncrona: {ex.Message}");
+        }
+    }
+
     public void Dispose()
     {
         try
