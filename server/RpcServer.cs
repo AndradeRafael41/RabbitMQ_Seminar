@@ -23,7 +23,7 @@ public class RpcServer
 
         int tentativas = 0;
         int maxTentativas = 10;
-        IModel? channel = null; 
+        IModel? channel = null;
 
         while (tentativas < maxTentativas)
         {
@@ -53,7 +53,7 @@ public class RpcServer
                     return;
                 }
 
-                Thread.Sleep(3000); 
+                Thread.Sleep(3000);
             }
 
         }
@@ -64,9 +64,8 @@ public class RpcServer
             var queue = Environment.GetEnvironmentVariable("QUEUE_RPC") ?? "fila_rpc";
             channel.QueueDeclare(queue, false, false, false);
 
-            // Criando consumidor para processar mensagens da fila
+            // Criando consumidor para processar mensagens da fila RPC
             var consumer = new EventingBasicConsumer(channel);
-
 
             // Evento disparado quando uma mensagem é recebida na fila (Assíncrono)
             consumer.Received += async (model, ea) =>
@@ -76,8 +75,13 @@ public class RpcServer
                     var messageJson = Encoding.UTF8.GetString(ea.Body.ToArray());
                     var request = JsonSerializer.Deserialize<RequestMessage>(messageJson);
 
+                    Console.WriteLine($"\n[RPC] Processando requisição: {request?.Operation}");
+                    Console.WriteLine($"[RPC] Payload: {request?.Payload}");
+
                     // chamada do método de processamento da requisição
                     var response = await ProcessAsync(request);
+
+                    Console.WriteLine($"[RPC] Resposta: {response}");
 
                     // preparando resposta para o cliente
                     var replyProps = channel.CreateBasicProperties();
@@ -86,7 +90,7 @@ public class RpcServer
                     // serializando a resposta em bytes para envio
                     var responseBytes = Encoding.UTF8.GetBytes(response);
 
-                    // envia respota para a fila de resposta do cliente    
+                    // envia respota para a fila de resposta do cliente
                     channel.BasicPublish(
                         exchange: "",
                         routingKey: ea.BasicProperties.ReplyTo,
@@ -108,7 +112,12 @@ public class RpcServer
 
             channel.BasicConsume(queue, false, consumer);
 
-            Console.WriteLine("Servidor aguardando mensagens...");
+            Console.WriteLine("╔════════════════════════════════════════╗");
+            Console.WriteLine("║   SERVIDOR RPC RABBITMQ INICIADO      ║");
+            Console.WriteLine("╚════════════════════════════════════════╝");
+            Console.WriteLine($"\n→ Fila RPC: {queue}");
+            Console.WriteLine("\n[INFO] Aguardando mensagens...\n");
+
             Console.ReadLine();
         }
         catch (Exception ex)

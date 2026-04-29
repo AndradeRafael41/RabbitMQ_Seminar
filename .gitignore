@@ -40,3 +40,7 @@ desktop.ini
 # Arquivos de log gerados pela aplicação ou pelo broker
 *.log
 logs/
+
+## [ Arquivos de Dados ]
+# Arquivo gerado pela opção 2 (FileService)
+server/file.txt
