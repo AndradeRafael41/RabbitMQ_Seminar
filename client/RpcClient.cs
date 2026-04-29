@@ -119,10 +119,4 @@ public class RpcClient : IDisposable
             Console.WriteLine("[ERRO] Falha ao encerrar conexão: " + ex.Message);
         }
     }
-
-
-
-
-
-
 }

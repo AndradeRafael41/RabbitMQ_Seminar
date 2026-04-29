@@ -10,14 +10,17 @@
 
             while (running)
             {
-                Console.WriteLine("\n=== CLIENTE RPC ===");
-                Console.WriteLine("1 - Enviar mensagem (RPC)");
-                Console.WriteLine("2 - Escrever em arquivo (RPC)");
-                Console.WriteLine("3 - Somar números (RPC)");
-                Console.WriteLine("4 - Enviar mensagem (ASYNC)");
-                Console.WriteLine("0 - Sair");
+                Console.WriteLine("\n╔══════════════════════════════════════╗");
+                Console.WriteLine("║      CLIENTE RPC - RabbitMQ         ║");
+                Console.WriteLine("╚══════════════════════════════════════╝");
+                Console.WriteLine("\n[OPERAÇÕES DISPONÍVEIS]");
+                Console.WriteLine("  1 - Enviar mensagem de texto");
+                Console.WriteLine("  2 - Escrever em arquivo no servidor");
+                Console.WriteLine("  3 - Operações matemáticas");
+                Console.WriteLine("  0 - Sair");
+                Console.WriteLine("─────────────────────────────────────");
 
-                Console.Write("Opção: ");
+                Console.Write("\nOpção: ");
                 var op = Console.ReadLine();
 
                 try
@@ -25,43 +28,115 @@
                     switch (op)
                     {
                         case "1":
-                            Console.Write("Mensagem: ");
-                            Console.WriteLine(rpc.Call("msg", Console.ReadLine()));
+                            Console.Write("\n→ Digite a mensagem: ");
+                            var msg = Console.ReadLine();
+                            if (!string.IsNullOrWhiteSpace(msg))
+                            {
+                                Console.WriteLine("\n[RESPOSTA]");
+                                Console.WriteLine(rpc.Call("msg", msg));
+                            }
+                            else
+                            {
+                                Console.WriteLine("[ERRO] Mensagem não pode ser vazia");
+                            }
                             break;
 
                         case "2":
-                            Console.Write("Texto: ");
-                            Console.WriteLine(rpc.Call("file", Console.ReadLine()));
+                            Console.Write("\n→ Digite o texto para salvar: ");
+                            var texto = Console.ReadLine();
+                            if (!string.IsNullOrWhiteSpace(texto))
+                            {
+                                Console.WriteLine("\n[RESPOSTA]");
+                                Console.WriteLine(rpc.Call("file", texto));
+                            }
+                            else
+                            {
+                                Console.WriteLine("[ERRO] Texto não pode ser vazio");
+                            }
                             break;
 
                         case "3":
-                            Console.Write("Ex: 2,3: ");
-                            Console.WriteLine(rpc.Call("calc", Console.ReadLine()));
+                            MostrarMenuCalculadora(rpc);
                             break;
 
-                        /*case "4":
-                            Console.Write("Mensagem async: ");
-                            rpc.SendAsync("msg", Console.ReadLine());
-                            break;
-                        */
                         case "0":
                             running = false;
+                            Console.WriteLine("\n[INFO] Encerrando cliente...");
                             break;
 
                         default:
-                            Console.WriteLine("Opção inválida!");
+                            Console.WriteLine("\n[ERRO] Opção inválida!");
                             break;
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("[ERRO] " + ex.Message);
+                    Console.WriteLine($"\n[ERRO] {ex.Message}");
+                }
+
+                if (running && op != "3")
+                {
+                    Console.WriteLine("\nPressione ENTER para continuar...");
+                    Console.ReadLine();
                 }
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine("[FATAL] Não foi possível iniciar o cliente: " + ex.Message);
+            Console.WriteLine($"\n[FATAL] Não foi possível iniciar o cliente: {ex.Message}");
         }
+    }
+
+    static void MostrarMenuCalculadora(RpcClient rpc)
+    {
+        Console.WriteLine("\n╔═══════════════════════════════════╗");
+        Console.WriteLine("║     OPERAÇÕES MATEMÁTICAS        ║");
+        Console.WriteLine("╚═══════════════════════════════════╝");
+        Console.WriteLine("  1 - Soma");
+        Console.WriteLine("  2 - Subtração");
+        Console.WriteLine("  3 - Multiplicação");
+        Console.WriteLine("  4 - Divisão");
+        Console.WriteLine("  5 - Potência");
+        Console.WriteLine("  6 - Módulo (resto)");
+        Console.WriteLine("  7 - Raiz n-ésima");
+        Console.WriteLine("  0 - Voltar");
+        Console.WriteLine("───────────────────────────────────");
+
+        Console.Write("\nOperação: ");
+        var opcao = Console.ReadLine();
+
+        if (opcao == "0") return;
+
+        Console.Write("Primeiro número: ");
+        var num1 = Console.ReadLine();
+
+        Console.Write("Segundo número: ");
+        var num2 = Console.ReadLine();
+
+        string operacao = opcao switch
+        {
+            "1" => "soma",
+            "2" => "sub",
+            "3" => "mult",
+            "4" => "div",
+            "5" => "pot",
+            "6" => "mod",
+            "7" => "raiz",
+            _ => ""
+        };
+
+        if (!string.IsNullOrEmpty(operacao))
+        {
+            var payload = $"{operacao},{num1},{num2}";
+            Console.WriteLine("\n[RESPOSTA]");
+            Console.WriteLine(rpc.Call("calc", payload));
+        }
+        else
+        {
+            Console.WriteLine("[ERRO] Operação inválida!");
+        }
+
+        Console.WriteLine("\nPressione ENTER para continuar...");
+        Console.ReadLine();
     }
 }
