@@ -1,0 +1,20 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    stdin_open: true  # Permite que o C# leia o STDIN
+    tty: true         # Simula um terminal
+    restart: on-failure # Reinicia se o código fechar por erro de conexão
+    depends_on:
+      - rabbitmq
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - QUEUE_RPC=fila_rpc
+      - FILE_PATH=/app/dados.txt
