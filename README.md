@@ -36,7 +36,7 @@ Este projeto demonstra a comunicação entre processos distribuídos utilizando 
 ```
 ┌─────────────┐         ┌──────────────┐         ┌─────────────┐
 │   Cliente   │ ───RPC───│  RabbitMQ   │ ───RPC───│  Servidor   │
-│   (.NET 9)  │          │  Middleware │          │  (.NET 8)   │
+│   (.NET 8)  │          │  Middleware │          │  (.NET 8)   │
 │             │ ─Async──│             │ ─Async──│             │
 └─────────────┘         └──────────────┘         └─────────────┘
      ↑                                                   ↓
