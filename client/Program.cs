@@ -17,8 +17,8 @@
                 Console.WriteLine("  1 - Enviar mensagem de texto");
                 Console.WriteLine("  2 - Escrever em arquivo no servidor");
                 Console.WriteLine("  3 - Operações matemáticas");
-                Console.WriteLine("\n[OPERAÇÃO ASSÍNCRONA - Sem Resposta]");
-                Console.WriteLine("  4 - Enviar mensagem async (Fire-and-forget)");
+                Console.WriteLine("\n[PUBLISH-SUBSCRIBE - Broadcasting]");
+                Console.WriteLine("  4 - Publicar mensagem para TODOS os servidores");
                 Console.WriteLine("\n[SISTEMA]");
                 Console.WriteLine("  0 - Sair");
                 Console.WriteLine("─────────────────────────────────────");
@@ -63,11 +63,11 @@
                             break;
 
                         case "4":
-                            Console.Write("\n→ Mensagem para envio assíncrono: ");
+                            Console.Write("\n→ Mensagem para publicar (será enviada para TODOS): ");
                             var msgAsync = Console.ReadLine();
                             if (!string.IsNullOrWhiteSpace(msgAsync))
                             {
-                                rpc.SendAsync("msg", msgAsync);
+                                rpc.PublishAsync("msg", msgAsync);
                             }
                             else
                             {

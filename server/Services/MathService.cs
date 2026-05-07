@@ -4,8 +4,6 @@ public class MathService : IOperationService
     {
         try
         {
-            // Formato esperado: "operacao,num1,num2"
-            // Exemplos: "soma,5,3" ou "div,10,2" ou "potencia,2,3"
             var parts = payload.Split(',');
 
             if (parts.Length < 3)
