@@ -130,49 +130,49 @@ Environment Variables:
                      │
                      │ 4. Publica mensagem
                      ↓
-┌────────────────────────────────────────────────────────────┐
-│                  RABBITMQ (Máquina 1)                      │
-│                                                            │
-│  Queue: fila_rpc                                          │
+┌──────────────────────────────────────────────────────────┐
+│                  RABBITMQ (Máquina 1)                    │
+│                                                          │
+│  Queue: fila_rpc                                         │
 │  ┌──────────────────────────────────────────┐            │
-│  │ Message:                                  │            │
+│  │ Message:                                  │           │
 │  │   Body: {"Operation":"calc",...}         │            │
 │  │   CorrelationId: a1b2c3d4...             │            │
 │  │   ReplyTo: amq.gen-randomString          │            │
 │  └──────────────────────────────────────────┘            │
-└────────────────────┬───────────────────────────────────────┘
+└────────────────────┬─────────────────────────────────────┘
                      │
                      │ 5. Roteia para consumidor
                      │
                      ↓
-┌────────────────────────────────────────────────────────────┐
-│                  SERVIDOR (Máquina 1)                      │
-│                                                            │
+┌───────────────────────────────────────────────────────────┐
+│                  SERVIDOR (Máquina 1)                     │
+│                                                           │
 │  6. Consumer recebe mensagem                              │
 │  7. Deserializa RequestMessage                            │
 │  8. Chama ProcessAsync()                                  │
 │  9. Identifica serviço: "calc" → MathService              │
 │  10. ExecuteAsync("soma,5,3")                             │
 │  11. Retorna: "Soma: 5 e 3 = 8.00"                        │
-│                                                            │
+│                                                           │
 │  12. Cria mensagem de resposta                            │
 │      - CorrelationId: a1b2c3d4... (mesmo!)                │
 │      - Destino: amq.gen-randomString                      │
-│                                                            │
+│                                                           │
 │  13. Publica na fila de resposta                          │
 │  14. BasicAck (confirma processamento)                    │
-└────────────────────┬───────────────────────────────────────┘
+└────────────────────┬──────────────────────────────────────┘
                      │
                      │ 15. RabbitMQ roteia resposta
                      ↓
 ┌────────────────────────────────────────────────────────────┐
-│                    CLIENTE (Máquina 2)                      │
+│                    CLIENTE (Máquina 2)                     │
 │                                                            │
-│  16. Consumer de resposta recebe                          │
-│  17. Verifica CorrelationId                               │
-│  18. Match! Armazena resposta                             │
-│  19. While loop detecta resposta != null                  │
-│  20. Retorna ao usuário: "Soma: 5 e 3 = 8.00"            │
+│  16. Consumer de resposta recebe                           │
+│  17. Verifica CorrelationId                                │
+│  18. Match! Armazena resposta                              │
+│  19. While loop detecta resposta != null                   │
+│  20. Retorna ao usuário: "Soma: 5 e 3 = 8.00"              │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -197,21 +197,21 @@ Environment Variables:
 ┌────────────────────────────────────────────────────────────┐
 │                  RABBITMQ (Máquina 1)                      │
 │                                                            │
-│  Queue: fila_async                                        │
-│  ┌──────────────────────────────────────────┐            │
-│  │ Message:                                  │            │
-│  │   Body: {"Operation":"msg",...}          │            │
-│  │   (sem CorrelationId)                    │            │
-│  └──────────────────────────────────────────┘            │
+│  Queue: fila_async                                         │
+│  ┌──────────────────────────────────────────┐              │
+│  │ Message:                                 │              │
+│  │   Body: {"Operation":"msg",...}          │              │
+│  │   (sem CorrelationId)                    │              │
+│  └──────────────────────────────────────────┘              │
 └────────────────────┬───────────────────────────────────────┘
                      │
                      ↓
 ┌────────────────────────────────────────────────────────────┐
 │                  SERVIDOR (Máquina 1)                      │
 │                                                            │
-│  4. AsyncConsumer recebe mensagem                         │
-│  5. ProcessAsync()                                        │
-│  6. Log no console (não envia resposta)                   │
-│  7. BasicAck                                              │
+│  4. AsyncConsumer recebe mensagem                          │
+│  5. ProcessAsync()                                         │
+│  6. Log no console (não envia resposta)                    │
+│  7. BasicAck                                               │
 └────────────────────────────────────────────────────────────┘
 ```

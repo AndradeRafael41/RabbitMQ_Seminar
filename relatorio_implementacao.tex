@@ -1,0 +1,116 @@
+\documentclass[12pt,a4paper]{article}
+
+% Pacotes necessários
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+% Configuração de página
+\geometry{margin=2.5cm}
+
+% Configuração de cores para código
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+% Configuração do estilo de código C#
+\lstdefinestyle{csharp}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=[Sharp]C,
+    frame=single
+}
+
+% Configuração do estilo para YAML
+\lstdefinestyle{yaml}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single
+}
+
+\lstset{style=csharp}
+
+% Configuração de hyperlinks
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+}
+
+\begin{document}
+
+\title{\textbf{Sistema RPC Distribuído com RabbitMQ}\\
+\large{Implementação do Cliente e Servidor}}
+\author{Vinícius}
+\date{\today}
+
+\maketitle
+
+\newpage
+
+\section{Implementação do Cliente e Servidor}
+
+O sistema foi desenvolvido em C\# com duas aplicações .NET independentes: servidor (.NET 8.0) e cliente (.NET 9.0), comunicando-se exclusivamente através de filas RabbitMQ.
+
+\subsection{Servidor}
+
+O servidor utiliza o padrão \textit{Strategy} através da interface \texttt{IOperationService}, permitindo extensibilidade através do registro de serviços em um \texttt{Dictionary}. Implementa reconexão automática (até 10 tentativas) e opera em duas filas: \texttt{fila\_rpc} (operações síncronas) e \texttt{fila\_async} (fire-and-forget). O processamento utiliza \texttt{EventingBasicConsumer} com confirmação manual via \texttt{BasicAck}/\texttt{BasicNack}.
+
+\subsection{Cliente}
+
+O cliente implementa \texttt{IDisposable} para gerenciamento de conexões e expõe dois métodos: \texttt{Call()} para RPC síncrono (com \texttt{CorrelationId}, fila temporária e timeout de 5s) e \texttt{SendAsync()} para envio assíncrono sem resposta. As mensagens são serializadas em JSON através da classe \texttt{RequestMessage}.
+
+\section{Bibliotecas Utilizadas}
+
+\begin{itemize}
+    \item \textbf{RabbitMQ.Client 6.8.1}: Biblioteca oficial para comunicação AMQP (ConnectionFactory, IModel, EventingBasicConsumer)
+    \item \textbf{System.Text.Json}: Serialização/desserialização nativa do .NET
+    \item \textbf{System.IO}: Operações de arquivo (FileService)
+    \item \textbf{System.Threading}: Gerenciamento de timeout e delays
+\end{itemize}
+
+\section{Configuração do Ambiente}
+
+O ambiente utiliza Docker Compose com três serviços: RabbitMQ (portas 5672 e 15672, com healthcheck), servidor containerizado com volume para persistência (\texttt{./server:/data}), e rede bridge dedicada. Variáveis de ambiente configuram hostname do broker, nomes das filas e timeout RPC.
+
+\section{Operações Implementadas}
+
+Todas as operações implementam a interface \texttt{IOperationService} com método \texttt{ExecuteAsync()}.
+
+\subsection{MessageService (msg)}
+Recebe mensagem de texto e retorna confirmação com timestamp e contagem de caracteres. Implementa validação de entrada vazia.
+
+\subsection{FileService (file)}
+Escreve conteúdo em \texttt{/data/file.txt} usando \texttt{AppendAllTextAsync()} para I/O assíncrono. Adiciona timestamp automático e retorna tamanho total do arquivo. Arquivo persiste via volume Docker.
+
+\subsection{MathService (calc)}
+Executa 7 operações matemáticas (soma, subtração, multiplicação, divisão, potência, módulo, raiz n-ésima) com formato \texttt{operacao,num1,num2}. Implementa validação de formato, parsing com \texttt{double.TryParse()}, tratamento de divisão/módulo por zero e raiz com índice zero. Aceita múltiplos aliases por operação (ex: soma/+).
+
+\end{document}

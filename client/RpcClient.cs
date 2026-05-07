@@ -30,10 +30,19 @@ public class RpcClient : IDisposable
             _connection = factory.CreateConnection();
             _channel = _connection.CreateModel();
 
-            // criando e configurando a fila
+            // criando e configurando a fila RPC
             _channel.QueueDeclare(_queue, false, false, false);
 
+            // Declarando Fanout Exchange para Publish-Subscribe
+            _channel.ExchangeDeclare(
+                exchange: "async_pubsub",
+                type: ExchangeType.Fanout,
+                durable: false,
+                autoDelete: false
+            );
+
             Console.WriteLine($"[OK] Conectado ao RabbitMQ em {host}");
+            Console.WriteLine($"[OK] Exchange Pub/Sub configurado");
         }
         catch (Exception ex)
         {
@@ -43,7 +52,7 @@ public class RpcClient : IDisposable
 
     }
 
-    // metodo sincrono (Apenas para o Cliente)
+    // metodo sincrono (RPC)
     public string Call(string operation, string payload)
     {
         try
@@ -58,10 +67,8 @@ public class RpcClient : IDisposable
             var json = JsonSerializer.Serialize(request);
             var body = Encoding.UTF8.GetBytes(json);
 
-            // criando o correlationId (importante !)
+            // criando o correlationId
             var correlationId = Guid.NewGuid().ToString();
-
-            // criando uma fila temporária de resposta exclusiva com autoexclusão para o cliente
             var replyQueue = _channel.QueueDeclare("", false, true, true).QueueName;
 
             var props = _channel.CreateBasicProperties(); ;
@@ -108,8 +115,8 @@ public class RpcClient : IDisposable
         }
     }
 
-    // Método assíncrono (Fire-and-forget) - Envia mensagem sem esperar resposta
-    public void SendAsync(string operation, string payload)
+    // Método Publish-Subscribe
+    public void PublishAsync(string operation, string payload)
     {
         try
         {
@@ -123,16 +130,17 @@ public class RpcClient : IDisposable
             var json = JsonSerializer.Serialize(request);
             var body = Encoding.UTF8.GetBytes(json);
 
-            // Envia para uma fila dedicada de processamento assíncrono
-            var asyncQueue = Environment.GetEnvironmentVariable("QUEUE_ASYNC") ?? "fila_async";
+            // A mensagem será recebida por TODOS os servidores conectados ao exchange "async_pubsub"
+            _channel.BasicPublish(
+                exchange: "async_pubsub",
+                routingKey: "",
+                basicProperties: null,
+                body: body
+            );
 
-            // Declara a fila se não existir
-            _channel.QueueDeclare(asyncQueue, false, false, false);
-
-            // Envia mensagem sem aguardar resposta
-            _channel.BasicPublish("", asyncQueue, null, body);
-
-            Console.WriteLine($"\n[OK] Mensagem enviada para processamento assíncrono");
+            Console.WriteLine($"\n[PUB/SUB] Mensagem publicada para TODOS os subscribers");
+            Console.WriteLine($"[PUB/SUB] Operação: {operation}");
+            Console.WriteLine($"[PUB/SUB] Payload: {payload}");
         }
         catch (Exception ex)
         {
