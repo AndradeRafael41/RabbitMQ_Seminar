@@ -1,0 +1,46 @@
+## [ .NET / C# ]
+# Pastas de compilação e pacotes
+bin/
+obj/
+publish/
+.vs/
+.vscode/
+
+# Arquivos de usuário e cache do VS
+*.user
+*.userosscache
+*.sln.docstates
+
+# Pacotes NuGet (restaurados automaticamente)
+*.nupkg
+**/packages/*
+!**/packages/build/
+
+## [ Docker ]
+# Ignora arquivos de dados persistentes (se você mapear volumes locais)
+.docker/
+**/data/rabbitmq/
+
+## [ Variáveis de Ambiente / Segredo ]
+# Importante ignorar arquivos que contenham senhas do RabbitMQ
+.env
+*.env.local
+
+## [ SO / Geral ]
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Linux
+.DS_Store
+*.swp
+
+## [ Logs ]
+# Arquivos de log gerados pela aplicação ou pelo broker
+*.log
+logs/
+
+## [ Arquivos de Dados ]
+# Arquivo gerado pela opção 2 (FileService)
+server/file.txt
