@@ -34,7 +34,9 @@ public class RpcServer
                 // abrindo conexão com RabbitMQ
                 var factory = new ConnectionFactory()
                 {
-                    HostName = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "rabbitmq"
+                    HostName = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "rabbitmq",
+                    UserName = Environment.GetEnvironmentVariable("RABBITMQ_USER") ?? "guest",
+                    Password = Environment.GetEnvironmentVariable("RABBITMQ_PASS") ?? "guest"
                 };
                 var connection = factory.CreateConnection();
                 channel = connection.CreateModel();

@@ -22,7 +22,9 @@ public class RpcClient : IDisposable
 
             var factory = new ConnectionFactory()
             {
-                HostName = host
+                HostName = host,
+                UserName = Environment.GetEnvironmentVariable("RABBITMQ_USER") ?? "guest",
+                Password = Environment.GetEnvironmentVariable("RABBITMQ_PASS") ?? "guest"
             };
 
             _connection = factory.CreateConnection();

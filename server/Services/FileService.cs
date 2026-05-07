@@ -8,7 +8,7 @@ public class FileService : IOperationService
                 return "Erro: Conteúdo vazio não pode ser salvo";
 
             // Arquivo fixo na pasta do servidor (mapeada do host)
-            var path = "/data/file.txt";
+            var path = "./data/file.txt";
 
             // Adiciona timestamp para rastreabilidade
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
