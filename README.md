@@ -1,189 +1,213 @@
-# Sistema RPC Distribuído com RabbitMQ
+# Sistema RPC e Publish-Subscribe com RabbitMQ
 
-## 🚀 Início Rápido
+## Descrição
 
-**Quer começar a usar agora?** Leia o **[GUIA_PRATICO.md](GUIA_PRATICO.md)** para instruções passo a passo!
+Este projeto implementa um sistema de comunicação distribuída utilizando RabbitMQ como middleware de mensageria. O sistema demonstra dois padrões fundamentais de comunicação:
 
-- ✅ Como rodar em 1 PC só (desenvolvimento local)
-- ✅ Como rodar em 2 PCs diferentes (distribuído)
-- ✅ Explicação dos scripts start-server e start-client
-- ✅ Solução de problemas comuns
+1. **RPC (Remote Procedure Call)**: Comunicação síncrona request-response entre cliente e servidor
+2. **Publish-Subscribe**: Broadcasting assíncrono de mensagens para múltiplos consumidores
 
----
+## Tecnologias Utilizadas
 
-## 📋 Descrição do Projeto
+- **Linguagem**: C# (.NET 8)
+- **Middleware**: RabbitMQ 3 com Management Plugin
+- **Biblioteca**: RabbitMQ.Client 6.8.1
+- **Containerização**: Docker (apenas para RabbitMQ Broker)
+- **Protocolo**: AMQP (Advanced Message Queuing Protocol)
+- **Sistemas Operacionais**: Windows (Cliente), Linux (Servidor e Broker)
 
-Este projeto demonstra a comunicação entre processos distribuídos utilizando **RabbitMQ** como middleware de mensageria. O sistema implementa um padrão RPC (Remote Procedure Call) e processamento assíncrono de mensagens.
+## Arquitetura do Sistema
 
-### Requisitos Atendidos
+### Componentes
 
-✅ **Cliente e Servidor distribuídos** comunicando-se via RabbitMQ
-✅ **Três operações básicas implementadas:**
-- 🗨️ Resposta a mensagem de texto
-- 📝 Alteração de arquivo texto no servidor
-- 🧮 Cálculo de funções matemáticas (7 operações disponíveis)
+O sistema é executado em 3 computadores separados:
 
-✅ **Recursos adicionais:**
-- 📨 Filas de mensagens (RPC e Assíncrona)
-- ⚡ Processamento assíncrono (Fire-and-forget)
-- 🔄 Tratamento robusto de erros
-- 🐳 Containerização com Docker
+**Computador 1: Cliente (Windows)**
+- Aplicação .NET 8 console
+- Sistema operacional: Windows
+- Publica mensagens RPC e Pub/Sub
+- Aguarda respostas de chamadas RPC
+- Não aguarda resposta em Pub/Sub
+- Conecta-se ao RabbitMQ remotamente
 
----
+**Computador 2: Servidor (Linux)**
+- Aplicação .NET 8 console
+- Sistema operacional: Linux
+- Consome mensagens da fila RPC
+- Subscreve ao exchange Pub/Sub
+- Processa requisições e retorna respostas
+- Conecta-se ao RabbitMQ remotamente
 
-## 🏗️ Arquitetura
+**Computador 3: RabbitMQ Broker (Linux com Docker)**
+- Sistema operacional: Linux
+- RabbitMQ executado em container Docker
+- Gerencia filas e exchanges
+- Roteia mensagens entre cliente e servidores
+- Interface web de gerenciamento na porta 15672
+- Aceita conexões remotas nas portas 5672 (AMQP) e 15672 (Management)
 
-```
-┌─────────────┐         ┌──────────────┐         ┌─────────────┐
-│   Cliente   │ ───RPC───│  RabbitMQ   │ ───RPC───│  Servidor   │
-│   (.NET 9)  │          │  Middleware │          │  (.NET 8)   │
-│             │ ─Async──│             │ ─Async──│             │
-└─────────────┘         └──────────────┘         └─────────────┘
-     ↑                                                   ↓
-     │                                              ┌─────────┐
-     │                                              │Services │
-     │                                              ├─────────┤
-     └──────────────────────────────────────────────│  MSG    │
-                   Requisição/Resposta               │  FILE   │
-                                                     │  MATH   │
-                                                     └─────────┘
-```
+### Padrões de Comunicação Implementados
 
----
+#### 1. RPC (Remote Procedure Call)
 
-## 🚀 Funcionalidades
+O padrão RPC permite que o cliente execute procedimentos remotos no servidor e aguarde a resposta, simulando uma chamada de função local.
 
-### Operações RPC (Síncrono - com resposta)
+**Funcionamento:**
 
-#### 1️⃣ Mensagem de Texto
-Envia uma mensagem e recebe confirmação do servidor com timestamp.
+1. Cliente cria uma fila de resposta exclusiva e temporária
+2. Cliente publica mensagem na fila RPC com:
+   - CorrelationId: identificador único da requisição
+   - ReplyTo: nome da fila de resposta
+   - Payload: dados da requisição serializados em JSON
+3. Servidor consome mensagem da fila RPC
+4. Servidor processa a requisição
+5. Servidor publica resposta na fila indicada em ReplyTo
+6. Cliente recebe resposta correlacionando pelo CorrelationId
+7. Cliente retorna resultado ao usuário
 
-**Exemplo:**
-```
-→ Cliente: "Olá Servidor!"
-← Servidor: "[14:30:25] Servidor recebeu: "Olá Servidor!" (Tamanho: 14 caracteres)"
-```
+**Características:**
+- Comunicação síncrona do ponto de vista do cliente
+- Timeout configurável (padrão: 5 segundos)
+- Apenas um servidor processa cada requisição
+- Garante resposta ao cliente
 
-#### 2️⃣ Alteração de Arquivo
-Escreve conteúdo em um arquivo no servidor com timestamp.
+**Fila utilizada:**
+- `fila_rpc`: fila persistente para requisições RPC
 
-**Exemplo:**
-```
-→ Cliente: "Dados importantes"
-← Servidor: "✓ Conteúdo salvo no arquivo. Tamanho total: 256 bytes"
-```
+#### 2. Publish-Subscribe
 
-#### 3️⃣ Operações Matemáticas
-Realiza cálculos matemáticos no servidor:
+O padrão Pub/Sub permite broadcasting de mensagens para múltiplos consumidores simultaneamente usando Fanout Exchange.
 
-| Operação      | Comando    | Exemplo        | Resultado      |
-|---------------|------------|----------------|----------------|
-| Soma          | `soma`     | soma,5,3       | Soma: 5 e 3 = 8.00 |
-| Subtração     | `sub`      | sub,10,4       | Subtração: 10 e 4 = 6.00 |
-| Multiplicação | `mult`     | mult,7,6       | Multiplicação: 7 e 6 = 42.00 |
-| Divisão       | `div`      | div,15,3       | Divisão: 15 e 3 = 5.00 |
-| Potência      | `pot`      | pot,2,8        | Potência: 2 e 8 = 256.00 |
-| Módulo        | `mod`      | mod,10,3       | Módulo: 10 e 3 = 1.00 |
-| Raiz n-ésima  | `raiz`     | raiz,27,3      | Raiz: 27 e 3 = 3.00 |
+**Funcionamento:**
 
-### Operações Assíncronas (Fire-and-forget)
+1. Exchange Fanout "async_pubsub" é declarado
+2. Cada servidor cria fila exclusiva e temporária
+3. Cada servidor vincula (bind) sua fila ao exchange
+4. Cliente publica mensagem no exchange (sem routing key)
+5. RabbitMQ duplica mensagem para TODAS as filas vinculadas
+6. Todos os servidores recebem e processam a mesma mensagem
+7. Não há resposta ao cliente
 
-#### 4️⃣ Mensagem Assíncrona
-Envia mensagem sem aguardar resposta, processada em segundo plano.
+**Características:**
+- Comunicação assíncrona (fire-and-forget)
+- Broadcasting para múltiplos consumidores
+- Todos os servidores conectados processam a mensagem
+- Filas exclusivas são deletadas quando servidor desconecta
+- Ideal para notificações, logs e eventos distribuídos
 
----
+**Exchange utilizado:**
+- `async_pubsub`: Fanout Exchange para broadcasting
 
-## 🛠️ Tecnologias Utilizadas
+## Como Executar o Projeto
 
-- **Linguagem:** C# (.NET 8 para servidor, .NET 9 para cliente)
-- **Middleware:** RabbitMQ 3
-- **Biblioteca:** RabbitMQ.Client 6.8.1
-- **Containerização:** Docker & Docker Compose
-- **Padrões:** RPC, Pub/Sub, Message Queue
-
----
-
-## 📦 Estrutura do Projeto
-
-```
-RabbitMQ_Seminar/
-├── client/                      # Aplicação Cliente
-│   ├── Program.cs              # Interface do usuário
-│   ├── RpcClient.cs            # Lógica RPC e Async
-│   ├── client.csproj
-│   └── models/
-│       └── RequestMessage.cs   # Modelo de requisição
-│
-├── server/                      # Aplicação Servidor
-│   ├── Program.cs              # Inicialização
-│   ├── RpcServer.cs            # Gerenciador de filas
-│   ├── Dockerfile
-│   ├── server.csproj
-│   ├── Models/
-│   │   └── RequestMessage.cs
-│   └── Services/
-│       ├── interface/
-│       │   └── IOperationService.cs
-│       ├── MessageService.cs   # Processamento de mensagens
-│       ├── FileService.cs      # Operações de arquivo
-│       └── MathService.cs      # Cálculos matemáticos
-│
-├── docker-compose.yml           # Orquestração dos serviços
-└── README.md
-```
-
----
-
-## 🔧 Instalação e Execução
+O projeto é executado em 3 computadores distintos conectados na mesma rede.
 
 ### Pré-requisitos
 
-- [.NET SDK 8.0+](https://dotnet.microsoft.com/download)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+**Todos os computadores:**
+- Conectados na mesma rede local
+- Firewall configurado para permitir comunicação nas portas 5672 e 15672
 
-### Execução Rápida (1 PC)
+**Computador 1 (Cliente - Windows):**
+- .NET 8 SDK instalado
+- Windows 10 ou superior
 
-```powershell
-# Terminal 1 - Servidor
-docker-compose up --build
+**Computador 2 (Servidor - Linux):**
+- .NET 8 SDK instalado
+- Distribuição Linux (Ubuntu, Debian, etc.)
 
-# Terminal 2 - Cliente (em outra janela)
-cd client
+**Computador 3 (RabbitMQ - Linux):**
+- Docker instalado
+- Distribuição Linux (Ubuntu, Debian, etc.)
+
+### Passo 1: Configurar RabbitMQ (Computador 3 - Linux)
+
+**Executar RabbitMQ com Docker:**
+
+```bash
+docker run -d \
+  --name rabbitmq \
+  -p 5672:5672 \
+  -p 15672:15672 \
+  -e RABBITMQ_DEFAULT_USER=guest \
+  -e RABBITMQ_DEFAULT_PASS=guest \
+  rabbitmq:3-management
+```
+
+**Verificar se o container está rodando:**
+
+```bash
+docker ps | grep rabbitmq
+```
+
+**Anotar o endereço IP do computador:**
+
+```bash
+ip addr show | grep inet
+# Anote o IP (ex: 192.168.1.100)
+```
+
+**Verificar logs do RabbitMQ (opcional):**
+
+```bash
+docker logs rabbitmq
+```
+
+### Passo 2: Executar Servidor (Computador 2 - Linux)
+
+**Navegar até o diretório do servidor:**
+
+```bash
+cd server
+```
+
+**Configurar endereço do RabbitMQ:**
+
+```bash
+export RABBITMQ_HOST="192.168.1.100"  # IP do Computador 3
+export RABBITMQ_USER="guest"           # Usuário RabbitMQ
+export RABBITMQ_PASS="guest"           # Senha RabbitMQ
+```
+
+**Executar o servidor:**
+
+```bash
 dotnet run
 ```
 
-**Pronto!** O cliente conecta automaticamente em `localhost`.
+O servidor deve mostrar:
+```
+Conectado ao RabbitMQ!
 
-### Execução em 2 PCs Diferentes
+╔═══════════════════════════════════════════════╗
+║     SERVIDOR RPC + PUB/SUB INICIADO         ║
+╚═══════════════════════════════════════════════╝
 
-**📖 Leia o [GUIA_PRATICO.md](GUIA_PRATICO.md) para instruções detalhadas!**
-
-Resumo:
-1. **PC 1:** Execute `docker-compose up` e anote o IP
-2. **PC 2:** Configure `$env:RabbitMQ_HOST="IP_DO_PC1"` e execute o cliente
-
-### Scripts de Automação (Opcionais)
-
-Os scripts `start-server` e `start-client` facilitam a execução:
-
-```powershell
-# Servidor (mostra IPs disponíveis e inicia)
-.\start-server.ps1
-
-# Cliente (pergunta configurações e inicia)
-.\start-client.ps1
+→ RPC: fila_rpc
+→ Pub/Sub: async_pubsub (broadcasting)
 ```
 
-**Quando usar os scripts?**
-- ✅ Para testes rápidos com configuração guiada
-- ✅ Quando não lembra os comandos
-- ❌ Não use em produção ou scripts automatizados
+### Passo 3: Executar Cliente (Computador 1 - Windows)
 
-**Detalhes completos no [GUIA_PRATICO.md](GUIA_PRATICO.md)**
+**Navegar até o diretório do cliente:**
 
----
+```powershell
+cd client
+```
 
-## 🖥️ Interface do Cliente
+**Configurar endereço do RabbitMQ:**
+
+```powershell
+$env:RabbitMQ_HOST="192.168.1.100"  # IP do Computador 3
+```
+
+**Executar o cliente:**
+
+```powershell
+dotnet run
+```
+
+O menu interativo será exibido:
 
 ```
 ╔══════════════════════════════════════╗
@@ -195,131 +219,65 @@ Os scripts `start-server` e `start-client` facilitam a execução:
   2 - Escrever em arquivo no servidor
   3 - Operações matemáticas
 
-[OPERAÇÕES ASSÍNCRONAS - Sem Resposta]
-  4 - Enviar mensagem async (Fire-and-forget)
+[PUBLISH-SUBSCRIBE - Broadcasting]
+  4 - Publicar mensagem para TODOS os servidores
 
 [SISTEMA]
   0 - Sair
-─────────────────────────────────────
-
-Opção: _
 ```
 
----
+### Testando Múltiplos Servidores (Pub/Sub)
 
-## 🔍 Monitoramento RabbitMQ
+Para demonstrar o padrão Publish-Subscribe com múltiplos servidores:
 
-Acesse: `http://localhost:15672` (ou `http://IP_DO_SERVIDOR:15672`)
+**No Computador 2 (Servidor - Linux), abra múltiplos terminais:**
 
-**Login:** guest / guest
+**Terminal 1:**
+```bash
+export RABBITMQ_HOST="192.168.1.100"
+cd server
+dotnet run
+```
 
-Explore:
-- **Queues:** Veja `fila_rpc` e `fila_async` em ação
-- **Connections:** Veja cliente e servidor conectados
-- **Mensagens processadas em tempo real**
+**Terminal 2:**
+```bash
+export RABBITMQ_HOST="192.168.1.100"
+cd server
+dotnet run
+```
 
----
+**Terminal 3:**
+```bash
+export RABBITMQ_HOST="192.168.1.100"
+cd server
+dotnet run
+```
 
-## ⚙️ Configuração Avançada
-
-### Variáveis de Ambiente
-
-### Cliente
-
-| Variável       | Padrão      | Descrição                    |
-|----------------|-------------|------------------------------|
-| RabbitMQ_HOST  | localhost   | Endereço do RabbitMQ         |
-| QUEUE_RPC      | fila_rpc    | Nome da fila RPC             |
-| QUEUE_ASYNC    | fila_async  | Nome da fila assíncrona      |
-| RPC_TIMEOUT    | 5000        | Timeout RPC em ms            |
-
-### Servidor
-
-| Variável       | Padrão      | Descrição                    |
-|----------------|-------------|------------------------------|
-| RABBITMQ_HOST  | rabbitmq    | Endereço do RabbitMQ         |
-| QUEUE_RPC      | fila_rpc    | Nome da fila RPC             |
-| QUEUE_ASYNC    | fila_async  | Nome da fila assíncrona      |
-| FILE_PATH      | /app/dados.txt | Caminho do arquivo de dados |
-
-**Como usar:**
+**No Computador 1 (Cliente - Windows):**
 ```powershell
-# Windows
-$env:RabbitMQ_HOST="192.168.1.100"
-$env:RPC_TIMEOUT="10000"
-
-# Linux/Mac
-export RabbitMQ_HOST="192.168.1.100"
-export RPC_TIMEOUT="10000"
+cd client
+dotnet run
+# Selecione opção 4 (Publish-Subscribe)
 ```
 
----
+Todos os servidores receberão e processarão a mesma mensagem simultaneamente.
 
-## 🐛 Solução de Problemas
+### Acessar Interface de Gerenciamento
 
-**Problemas comuns?** Consulte o **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** com 19+ problemas e soluções!
+De qualquer computador na rede, acesse:
 
-Problemas rápidos:
-
-```powershell
-# Cliente não conecta?
-docker ps | grep rabbitmq  # Verifica se está rodando
-
-# Timeout?
-$env:RPC_TIMEOUT="10000"  # Aumenta timeout
-
-# Rebuild completo
-docker-compose down -v
-docker-compose up --build
+```
+http://192.168.1.100:15672
 ```
 
----
+(Substitua pelo IP real do Computador 3)
 
-## 📚 Documentação Adicional
+- Usuário: guest
+- Senha: guest
 
-- **[GUIA_PRATICO.md](GUIA_PRATICO.md)** - Como usar o sistema (leia primeiro!)
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solução de problemas detalhada
-- **[ARQUITETURA_TECNICA.md](ARQUITETURA_TECNICA.md)** - Detalhes técnicos e padrões
-- **[MELHORIAS_FUTURAS.md](MELHORIAS_FUTURAS.md)** - Ideias para extensão
-
----
-
-## 🎯 Comandos Úteis
-
-```powershell
-# Ver logs do servidor
-docker logs rabbitmq_rpc_server
-
-# Ver logs em tempo real
-docker logs -f rabbitmq_rpc_server
-
-# Parar tudo
-docker-compose down
-
-# Listar filas no RabbitMQ
-docker exec rabbitmq_server rabbitmqctl list_queues
-
-# Verificar arquivo salvo
-docker exec rabbitmq_rpc_server cat /app/dados.txt
-```
-
----
-
-## 📝 Notas Importantes
-
-1. **Comunicação entre máquinas:** Certifique-se de que firewall está liberado (portas 5672 e 15672)
-2. **Primeiro uso:** Leia o [GUIA_PRATICO.md](GUIA_PRATICO.md) para entender os cenários
-3. **Desenvolvimento:** Use 1 PC só para testes rápidos
-4. **Demonstração:** Use 2 PCs para mostrar comunicação distribuída real
-
----
-
-## 🔗 Referências
-
-- [RabbitMQ Official Documentation](https://www.rabbitmq.com/documentation.html)
-- [RabbitMQ Tutorials](https://www.rabbitmq.com/getstarted.html)
-- [.NET RabbitMQ Client](https://www.rabbitmq.com/dotnet.html)
-
----
-
-**Última atualização:** Abril 2026
+Na interface você pode:
+- Visualizar filas ativas (fila_rpc)
+- Monitorar exchange (async_pubsub)
+- Ver mensagens em trânsito
+- Acompanhar conexões ativas (cliente e servidor)
+- Verificar bindings entre filas e exchanges
